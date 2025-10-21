@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useContext } from 'react'; // Added useContext
+import React, { useState, useEffect, useMemo, useContext, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 // Ensure useCart is imported from Products.js
 import { useCart } from './Products'; // Assuming Products.js exports useCart
@@ -6,7 +6,8 @@ import { useCart } from './Products'; // Assuming Products.js exports useCart
 const ProductDetailPage = () => {
   const { id } = useParams(); // Get product ID from URL
   const navigate = useNavigate();
-  const { addToCart, cartItems, updateQuantity } = useCart(); // Use cart context
+  // --- FIX: Get all necessary functions from useCart ---
+  const { addToCart, cartItems, updateQuantity, getCartItemCount } = useCart(); // Use cart context
 
   const [product, setProduct] = useState(null); // State for the fetched product
   const [loading, setLoading] = useState(true); // Loading state
@@ -14,35 +15,30 @@ const ProductDetailPage = () => {
 
   const API_URL = 'http://localhost:5000/api'; // Backend API endpoint
 
+  // --- FIX: Wrap fetchProduct in useCallback to satisfy exhaustive-deps warning ---
+  const fetchProduct = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_URL}/admin/products`);
+      if (!response.ok) throw new Error(`Network response error: ${response.statusText}`);
+      const data = await response.json();
+      const foundProduct = Array.isArray(data) ? data.find(p => p.id === id) : null;
+      if (foundProduct) {
+        foundProduct.stock = parseInt(foundProduct.stock, 10) || 0;
+      }
+      setProduct(foundProduct);
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      setProduct(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [id, API_URL]); // Dependencies for useCallback
+
   // Fetch product data when the component mounts or ID changes
   useEffect(() => {
     fetchProduct();
-  }, [id]);
-
-  // Function to fetch the specific product details
-  const fetchProduct = async () => {
-    try {
-      setLoading(true);
-      // OPTIMIZATION NOTE: Ideally, you'd have an endpoint like `/api/products/:id`
-      // Fetching all products and filtering is less efficient for a single item.
-      const response = await fetch(`${API_URL}/admin/products`); // Using admin route for now
-      if (!response.ok) throw new Error(`Network response error: ${response.statusText}`);
-
-      const data = await response.json();
-      const foundProduct = Array.isArray(data) ? data.find(p => p.id === id) : null;
-
-      if (foundProduct) {
-        // Ensure stock is parsed as a number
-        foundProduct.stock = parseInt(foundProduct.stock, 10) || 0;
-      }
-      setProduct(foundProduct); // Set state with the found product or null
-    } catch (error) {
-      console.error('Error fetching product details:', error);
-      setProduct(null); // Set product to null on error
-    } finally {
-      setLoading(false); // Stop loading indicator
-    }
-  };
+  }, [id, fetchProduct]); // --- FIX: Add fetchProduct to dependency array ---
 
   // Effect to load necessary fonts
   useEffect(() => {
@@ -50,14 +46,39 @@ const ProductDetailPage = () => {
       "https://fonts.googleapis.com/css2?family=Marcellus&display=swap",
       "https://fonts.googleapis.com/css2?family=NTR&display=swap",
       "https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@400;700&display=swap",
-      "https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap" // Added Lora
+      "https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&display=swap"
     ];
-    fontLinks.forEach(href => { /* ... (font loading logic) ... */ });
+    fontLinks.forEach(href => { 
+        if (!document.querySelector(`link[href="${href}"]`)) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            document.head.appendChild(link);
+        }
+     });
   }, []);
 
-  // --- Stock Status Check ---
-  const stockCount = useMemo(() => product?.stock ?? 0, [product]); // Use ?? for nullish coalescing
+  // --- FIX: Hooks are now called at the top level, BEFORE early returns ---
+  const stockCount = useMemo(() => product?.stock ?? 0, [product]);
   const isOutOfStock = stockCount <= 0;
+
+  const variants = useMemo(() => {
+    if (!product || typeof product.basePrice === 'undefined') return [];
+    if (product.unit === '1KG') {
+      return [
+        { size: '250g', price: product.price250g ?? Math.round(product.basePrice / 4) },
+        { size: '500g', price: product.price500g ?? Math.round(product.basePrice / 2) },
+        { size: '1KG', price: product.price1kg ?? product.basePrice },
+      ];
+    }
+    return [{ size: product.unit || 'Unit', price: product.basePrice }];
+  }, [product]);
+
+  useEffect(() => {
+    if (variants.length > 0 && selectedVariantIndex >= variants.length) {
+      setSelectedVariantIndex(0);
+    }
+  }, [variants, selectedVariantIndex]);
 
   // --- Loading State Display ---
   if (loading) {
@@ -69,31 +90,8 @@ const ProductDetailPage = () => {
     return ( <div className="not-found-container"><p>Sorry, product not found.</p><button onClick={() => navigate('/products')}>Back to Products</button></div> );
   }
 
-  // --- Variants Logic (Memoized) ---
-  const variants = useMemo(() => {
-    // Return empty array if product data isn't fully loaded yet
-    if (!product || typeof product.basePrice === 'undefined') return [];
-
-    if (product.unit === '1KG') {
-      return [
-        { size: '250g', price: product.price250g ?? Math.round(product.basePrice / 4) }, // Use ?? for defaults
-        { size: '500g', price: product.price500g ?? Math.round(product.basePrice / 2) },
-        { size: '1KG', price: product.price1kg ?? product.basePrice },
-      ];
-    }
-    return [{ size: product.unit || 'Unit', price: product.basePrice }];
-  }, [product]);
-
-  // Effect to reset variant index if it becomes invalid (e.g., product changes)
-  useEffect(() => {
-    if (variants.length > 0 && selectedVariantIndex >= variants.length) {
-      setSelectedVariantIndex(0);
-    }
-  }, [variants, selectedVariantIndex]);
-
   // Safely get the current variant, defaulting if needed
   const currentVariant = variants[selectedVariantIndex] || variants[0] || { size: 'N/A', price: 0 };
-  // Generate cart item ID and check quantity in cart
   const cartItemId = `${product.id}-${currentVariant.size}`;
   const cartItem = cartItems.find(item => item.id === cartItemId);
   const quantityInCart = cartItem ? cartItem.quantity : 0;
@@ -105,7 +103,7 @@ const ProductDetailPage = () => {
   };
 
   const handleQuantityChange = (amount) => {
-    if (isOutOfStock && amount > 0) return; // Prevent increasing quantity when out of stock
+    if (isOutOfStock && amount > 0) return;
     const newQuantity = quantityInCart + amount;
     updateQuantity(cartItemId, newQuantity);
   };
@@ -114,44 +112,30 @@ const ProductDetailPage = () => {
   return (
     <div className="detail-page-container">
       <div className="detail-container">
-        {/* Back Button */}
-        <button onClick={() => navigate(-1)} className="back-button"> {/* Use navigate(-1) to go back */}
+        <button onClick={() => navigate(-1)} className="back-button">
           ← Back
         </button>
-
-        {/* Product Detail Card */}
         <div className="detail-card">
           <div className="product-detail-grid">
-            {/* Product Image */}
             <div className="image-wrapper">
               <img src={product.image} alt={product.name} className="product-detail-image" />
-              {/* Out of Stock Badge */}
               {isOutOfStock && <div className="stock-badge-overlay">Out of Stock</div>}
             </div>
-
-            {/* Product Info */}
             <div className="info-wrapper">
-              {/* Name & Telugu Name */}
               <div>
                 <h1 className="product-detail-name">{product.name}</h1>
                 <p className="product-detail-telugu">{product.teluguName}</p>
               </div>
-
-              {/* Descriptions */}
               <div>
                 <p className="product-description">{product.description}</p>
                 <p className="product-telugu-description">{product.teluguDescription}</p>
               </div>
-
-              {/* Price */}
               <div>
                 <div className="product-detail-price">
                   ₹{currentVariant.price}
                   <span className="price-unit-detail">/ {currentVariant.size}</span>
                 </div>
               </div>
-
-              {/* Variant Selector */}
               {variants.length > 1 && (
                 <div>
                   <p className="variant-label">Select Size:</p>
@@ -160,7 +144,6 @@ const ProductDetailPage = () => {
                       <button
                         key={variant.size}
                         onClick={() => setSelectedVariantIndex(index)}
-                        // Disable if out of stock
                         disabled={isOutOfStock}
                         className={`variant-button-detail ${selectedVariantIndex === index ? 'active' : ''}`}
                       >
@@ -170,30 +153,24 @@ const ProductDetailPage = () => {
                   </div>
                 </div>
               )}
-
-              {/* Add to Cart / Quantity / Out of Stock */}
               <div className="action-row">
                  {isOutOfStock ? (
-                    // Display Out of Stock message
                     <div className="out-of-stock-message">Currently Unavailable</div>
                  ) : quantityInCart > 0 ? (
-                    // Show Quantity Controls if in cart
                    <div className="quantity-control-detail">
                      <button onClick={() => handleQuantityChange(-1)} className="quantity-button">−</button>
                      <span className="quantity-display">{quantityInCart}</span>
                      <button onClick={() => handleQuantityChange(1)} className="quantity-button">+</button>
                    </div>
                  ) : (
-                    // Show Add to Cart button if not in cart
                    <button onClick={handleAddToCart} className="add-to-cart-button-detail">
                      Add to Cart
                    </button>
                  )}
-
-                 {/* Go to Cart Button (Show if anything is in the cart) */}
                  {cartItems.length > 0 && (
+                    // --- FIX: Use getCartItemCount from the hook ---
                     <button onClick={() => navigate('/cart')} className="go-to-cart-button">
-                        View Cart ({getCartItemCount()}) {/* Show item count */}
+                        View Cart ({getCartItemCount()})
                     </button>
                  )}
               </div>
@@ -201,16 +178,11 @@ const ProductDetailPage = () => {
           </div>
         </div>
       </div>
-
-      {/* Embedded Styles */}
       <style>{`
         /* --- Keep ALL Existing Styles --- */
-        /* --- Add/Update Styles for Out of Stock --- */
-        .out-of-stock-message { font-size: 1.1rem; font-weight: 600; color: #b91c1c; background-color: #fee2e2; padding: 0.9rem 1.5rem; border-radius: 0.5rem; border: 1px solid #fca5a5; text-align: center; width: 100%; /* Take full width in action row */ }
-        .stock-badge-overlay { position: absolute; top: 1rem; right: 1rem; background-color: rgba(185, 28, 28, 0.85); /* Red */ color: white; padding: 0.4rem 0.8rem; border-radius: 0.375rem; font-size: 0.8rem; font-weight: 600; z-index: 1; }
+        .out-of-stock-message { font-size: 1.1rem; font-weight: 600; color: #b91c1c; background-color: #fee2e2; padding: 0.9rem 1.5rem; border-radius: 0.5rem; border: 1px solid #fca5a5; text-align: center; width: 100%; }
+        .stock-badge-overlay { position: absolute; top: 1rem; right: 1rem; background-color: rgba(185, 28, 28, 0.85); color: white; padding: 0.4rem 0.8rem; border-radius: 0.375rem; font-size: 0.8rem; font-weight: 600; z-index: 1; }
         .variant-button-detail:disabled { background-color: #e5e7eb; border-color: #d1d5db; color: #9ca3af; cursor: not-allowed; }
-
-        /* --- Existing Styles (Ensure these are present) --- */
         .detail-page-container { background-color: #fdf8f0; min-height: 100vh; padding: 2rem 1rem; font-family: 'Josefin Sans', sans-serif;}
         .detail-container { max-width: 1100px; margin: 0 auto; }
         .loading-container, .not-found-container { min-height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #fdf8f0; text-align: center;}
@@ -222,7 +194,7 @@ const ProductDetailPage = () => {
         .product-detail-grid { display: grid; grid-template-columns: 1fr; gap: 2rem; padding: 2rem; }
         .image-wrapper { display: flex; justify-content: center; align-items: center; position: relative; }
         .product-detail-image { width: 100%; max-width: 450px; height: auto; border-radius: 0.75rem; object-fit: cover; border: 1px solid #eee; }
-        .info-wrapper { display: flex; flex-direction: column; gap: 1.5rem; justify-content: center; /* Better vertical alignment */}
+        .info-wrapper { display: flex; flex-direction: column; gap: 1.5rem; justify-content: center; }
         .product-detail-name { font-size: 2.25rem; font-weight: 700; color: #185e20; margin-bottom: 0.25rem; font-family: 'Marcellus', serif; line-height: 1.2; }
         .product-detail-telugu { font-size: 1.8rem; color: #D62828; font-family: 'NTR', sans-serif; line-height: 1.2; margin-bottom: 1rem; }
         .product-description { font-size: 1rem; color: #374151; line-height: 1.7; margin-bottom: 0.5rem; font-family: 'Lora', serif; }
@@ -242,7 +214,6 @@ const ProductDetailPage = () => {
         .go-to-cart-button { padding: 0.9rem 1.8rem; background-color: #185e20; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 1rem; font-weight: 700; font-family: 'Josefin Sans', sans-serif; transition: background-color 0.2s; }
         .go-to-cart-button:hover { background-color: #104216; }
 
-        /* Responsive */
         @media (min-width: 768px) {
           .product-detail-grid { grid-template-columns: 1fr 1fr !important; gap: 3rem; padding: 3rem; }
           .product-detail-name { font-size: 2.75rem; }

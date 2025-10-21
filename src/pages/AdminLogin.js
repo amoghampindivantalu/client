@@ -8,18 +8,26 @@ const AdminLogin = ({ onLoginSuccess }) => {
 
   // --- Read password from environment variable ---
   // Use a default value if the environment variable is not set during development
-  const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD ; // Fallback added
+  const ADMIN_PASSWORD = process.env.REACT_APP_ADMIN_PASSWORD || 'admin12'; // Fallback added
 
   const handleLogin = (e) => {
     e.preventDefault();
+    console.log('Password entered:', password);
+    console.log('Expected password:', ADMIN_PASSWORD);
+    console.log('Passwords match:', password === ADMIN_PASSWORD);
+    
     if (password === ADMIN_PASSWORD) {
       setError('');
+      console.log('Login successful, setting session storage');
       sessionStorage.setItem('isAdminAuthenticated', 'true');
       if (onLoginSuccess) { // Check if the prop exists before calling
+        console.log('Calling onLoginSuccess');
         onLoginSuccess();
       }
+      console.log('Navigating to /admin');
       navigate('/admin', { replace: true });
     } else {
+      console.log('Login failed - incorrect password');
       setError('Incorrect password. Please try again.');
       setPassword(''); // Clear password field on error
     }

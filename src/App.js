@@ -7,7 +7,7 @@ import Footer from './components/Footer';
 import FloatingCartIcon from './components/FloatingCartIcon';
 import AdminDashboard from './pages/AdminDashboard';
 import OrderConfirmation from './pages/OrderConfirmation';
-import AdminLogin from './pages/AdminLogin'; // <-- Import the new login page
+import AdminLogin from './pages/AdminLogin';
 
 // Pages
 import Home from './pages/Home';
@@ -19,21 +19,17 @@ import ProductDetailPage from './pages/ProductDetailPage';
 // Import Products page and the essential CartProvider
 import { Products, CartProvider } from './pages/Products';
 
-// --- NEW: Protected Route Component ---
+// --- Protected Route Component ---
 const ProtectedRoute = ({ isAuthenticated, children }) => {
   if (!isAuthenticated) {
-    // Redirect them to the /login page, but save the current location they were
-    // trying to go to. This allows us to send them along to that page after they login.
     return <Navigate to="/login" replace />;
   }
   return children;
 };
 
-
 // Layout wrapper component
-function Layout({ isAuthenticated }) {
+function Layout({ isAuthenticated, setIsAuthenticated }) {
   const location = useLocation();
-  // Don't show header/footer on admin or login routes
   const hideLayout = location.pathname.startsWith('/admin') || location.pathname === '/login';
 
   return (
@@ -49,10 +45,20 @@ function Layout({ isAuthenticated }) {
           <Route path="/cart" element={<Cart />} />
           <Route path="/order-confirmation" element={<OrderConfirmation />} />
           
-          {/* Unprotected route for the login page */}
-          <Route path="/login" element={<AdminLogin onLoginSuccess={() => { /* This will be handled by App state */ }} />} />
+          {/* Login route with proper callback */}
+          <Route 
+            path="/login" 
+            element={
+              <AdminLogin 
+                onLoginSuccess={() => {
+                  console.log('Login success callback triggered');
+                  setIsAuthenticated(true);
+                }} 
+              />
+            } 
+          />
 
-          {/* ** PROTECTED ADMIN DASHBOARD ROUTE ** */}
+          {/* Protected Admin Dashboard Route */}
           <Route
             path="/admin"
             element={
@@ -69,17 +75,15 @@ function Layout({ isAuthenticated }) {
 }
 
 function App() {
-  // --- NEW: Authentication state for the whole app ---
+  // Authentication state
   const [isAuthenticated, setIsAuthenticated] = useState(
-    // Check session storage on initial load
     sessionStorage.getItem('isAdminAuthenticated') === 'true'
   );
 
-  // This effect can be used if you want to handle login state changes globally
+  // Sync authentication state changes
   useEffect(() => {
-    // A simple way to sync state if it changes in another tab (not fully robust)
     const handleStorageChange = () => {
-       setIsAuthenticated(sessionStorage.getItem('isAdminAuthenticated') === 'true');
+      setIsAuthenticated(sessionStorage.getItem('isAdminAuthenticated') === 'true');
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
@@ -88,9 +92,7 @@ function App() {
   return (
     <CartProvider>
       <Router>
-        {/* Pass auth state to the Layout */}
-        <Layout isAuthenticated={isAuthenticated} />
-        {/* FloatingCartIcon only appears on non-admin/non-login pages */}
+        <Layout isAuthenticated={isAuthenticated} setIsAuthenticated={setIsAuthenticated} />
         <FloatingCartIcon />
       </Router>
     </CartProvider>
