@@ -74,7 +74,7 @@ const AdminDashboard = () => {
     unit: '1KG', image: '', stock: 100
   });
 
-  const API_URL = 'http://localhost:5000/api';
+  const API_URL = process.env.REACT_APP_API_URL;
   const categories = ['Sweets', 'Snacks', 'Spice Powders', 'Pickles'];
   const orderStatuses = ['pending', 'completed', 'shipped', 'delivered', 'cancelled', 'failed'];
   const LOW_STOCK_THRESHOLD = 5;
