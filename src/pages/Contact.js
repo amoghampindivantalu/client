@@ -27,8 +27,8 @@ const Contact = () => {
   ];
 
   // --- ⬇️ PASTE YOUR REAL GOOGLE MAPS URLs HERE ⬇️ ---
-  const mapEmbedUrl = "PASTE_THE_EMBED_SRC_URL_HERE"; // Replace this placeholder (URL starts with https://www.google.com/maps/embed?...)
-  const mapDirectionsUrl = "PASTE_THE_SHARE_LINK_URL_HERE"; // Replace this placeholder (URL starts with https://maps.app.goo.gl/... or similar)
+  const mapEmbedUrl = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d707.381635761378!2d78.85394802406906!3d18.09155875237976!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bcc938bd64af107%3A0xc6c66d9d3f521d88!2sVishal%20Mega%20Mart!5e0!3m2!1sen!2sin!4v1761053070300!5m2!1sen!2sin"; // Replace this placeholder (URL starts with https://www.google.com/maps/embed?...)
+  const mapDirectionsUrl = "https://maps.app.goo.gl/mhG2aYJHKyktjxAQA"; // Replace this placeholder (URL starts with https://maps.app.goo.gl/... or similar)
   // --- ⬆️ PASTE YOUR REAL GOOGLE MAPS URLs HERE ⬆️ ---
 
 
