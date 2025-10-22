@@ -13,8 +13,7 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true); // Loading state
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0); // Selected size variant
 
-  const API_URL = 'http://localhost:5000/api'; // Backend API endpoint
-
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api'; // Use env variable, fallback to localhost
   // --- FIX: Wrap fetchProduct in useCallback to satisfy exhaustive-deps warning ---
   const fetchProduct = useCallback(async () => {
     try {

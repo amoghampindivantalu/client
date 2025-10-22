@@ -27,8 +27,7 @@ export const Cart = () => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // --- Constants ---
-  const API_URL = 'http://localhost:5000/api';
-
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api'; // Use env variable, fallback to localhost
   // --- Derived State ---
   const isSiddipetDelivery = useMemo(() => formData.city.trim().toLowerCase() === 'siddipet', [formData.city]);
   const shippingCharge = isSiddipetDelivery ? 0 : 99;
