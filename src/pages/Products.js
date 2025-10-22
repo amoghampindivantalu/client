@@ -199,7 +199,7 @@ export const Products = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const API_URL = 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://server-4qyb.onrender.com/api';
 
   // Effect to load fonts and fetch initial product data
   useEffect(() => {
