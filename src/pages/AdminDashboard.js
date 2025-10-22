@@ -522,6 +522,7 @@ const AdminDashboard = () => {
         .customer-info { display: flex; flex-direction: column; gap: 0.1rem; } 
         .customer-name { font-weight: 600; color: #1f2937; } 
         .customer-detail { font-size: 0.8rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; } 
+        .customer-address { font-size: 0.8rem; color: #6b7280; white-space: normal; word-wrap: break-word; max-width: 300px; line-height: 1.4; }
         .dialog-modal { background-color: white; border-radius: 0.75rem; max-width: 400px; width: 90%; padding: 2rem; text-align: center; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); } 
         .dialog-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; } 
         .dialog-title { font-size: 1.25rem; font-weight: 600; color: #111827; margin-bottom: 0.5rem; } 
@@ -734,8 +735,8 @@ const AdminDashboard = () => {
                                   <span className="customer-name">{order.customerName || 'N/A'}</span>
                                   <span className="customer-detail" title={order.customerEmail}>📧 {order.customerEmail || 'N/A'}</span>
                                   <span className="customer-detail">📞 {order.customerPhone || 'N/A'}</span>
-                                  <span className="customer-detail" title={order.deliveryAddress}>
-                                    📍 {order.deliveryAddress ? (order.deliveryAddress.length > 35 ? order.deliveryAddress.substring(0, 35) + '...' : order.deliveryAddress) : 'N/A'}
+                                  <span className="customer-address" title={order.deliveryAddress}>
+                                    📍 {order.deliveryAddress || 'N/A'}
                                   </span>
                                 </div>
                               </td>
